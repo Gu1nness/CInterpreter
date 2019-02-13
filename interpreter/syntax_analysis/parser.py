@@ -27,8 +27,8 @@ class Parser(object):
             self.current_token = self.lexer.get_next_token
         else:
             self.error(
-                'Expected token <{}> but found <{}> at line {}.'.format(
-                    token_type, self.current_token.type, self.lexer.line
+                'Expected token <{}> but found <{}> at line {}:{}.'.format(
+                    token_type, self.current_token.type, self.lexer.line, self.lexer.char
                 )
             )
 
@@ -38,8 +38,8 @@ class Parser(object):
         """
         root = Program(
             declarations=self.declarations(),
-            line=self.lexer.line
-
+            line=self.lexer.line,
+            char=self.lexer.line
         )
         return root
 
@@ -69,8 +69,8 @@ class Parser(object):
         token = self.current_token
         if token.value != 'include':
             self.error(
-                'Expected token "include" but found {} at line {}.'.format(
-                    token.value, self.lexer.line
+                'Expected token "include" but found {} at line {}:{}.'.format(
+                    token.value, self.lexer.line, self.lexer.char
                 )
             )
 
@@ -82,13 +82,16 @@ class Parser(object):
         extension = self.current_token
         if extension.value != 'h':
             self.error(
-                'You can include only *.h files [line {}]'.format(self.lexer.line)
+                'You can include only *.h files [line {}:{}]'.format(
+                    self.lexer.line, self.lexer.char
+                )
             )
         self.eat(ID)
         self.eat(GT_OP)
         return IncludeLibrary(
             library_name=token.value,
-            line=self.lexer.line
+            line=self.lexer.line,
+            char=self.lexer.char
         )
 
     def struct_type(self):
@@ -106,7 +109,8 @@ class Parser(object):
             token=token,
             struct_name=struct_name,
             struct_body=body,
-            line=self.lexer.line
+            line=self.lexer.line,
+            char=self.lexer.char
         )
 
     def struct_body(self):
@@ -141,7 +145,8 @@ class Parser(object):
             func_name=func_name,
             params=params,
             body=self.function_body(),
-            line=self.lexer.line
+            line=self.lexer.line,
+            char=self.lexer.char
         )
 
     def function_body(self):
@@ -158,7 +163,8 @@ class Parser(object):
         self.eat(RBRACKET)
         return FunctionBody(
             children=result,
-            line=self.lexer.line
+            line=self.lexer.line,
+            char=self.lexer.char
         )
 
     def parameters(self):
@@ -170,14 +176,16 @@ class Parser(object):
             nodes = [Param(
                 type_node=self.type_spec(),
                 var_node=self.variable(),
-                line=self.lexer.line
+                line=self.lexer.line,
+                char=self.lexer.char
             )]
             while self.current_token.type == COMMA:
                 self.eat(COMMA)
                 nodes.append(Param(
                     type_node=self.type_spec(),
                     var_node=self.variable(),
-                    line=self.lexer.line
+                    line=self.lexer.line,
+                    char=self.lexer.char
                 ))
         return nodes
 
@@ -211,7 +219,8 @@ class Parser(object):
                 result.append(VarDecl(
                     type_node=type_node,
                     var_node=node,
-                    line=self.lexer.line
+                    line=self.lexer.line,
+                    char=self.lexer.char
                 ))
             else:
                 result.append(node)
@@ -227,7 +236,8 @@ class Parser(object):
             self.eat(token.type)
             return Type(
                 token=token,
-                line=self.lexer.line
+                line=self.lexer.line,
+                char=self.lexer.char
             )
 
     def struct_decl(self):
@@ -246,7 +256,8 @@ class Parser(object):
                         token=token,
                         struct_name=node.value,
                         struct_type=token.value,
-                        line=self.lexer.line
+                        line=self.lexer.line,
+                        char=self.lexer.char
                     )
                 )
             else:
@@ -280,7 +291,8 @@ class Parser(object):
                 left=var,
                 op=token,
                 right=self.assignment_expression(),
-                line=self.lexer.line
+                line=self.lexer.line,
+                char=self.lexer.char
             ))
         return result
 
@@ -320,7 +332,8 @@ class Parser(object):
         self.eat(RBRACKET)
         return CompoundStmt(
             children=result,
-            line=self.lexer.line
+            line=self.lexer.line,
+            char=self.lexer.char
         )
 
     @restorable
@@ -341,20 +354,23 @@ class Parser(object):
             self.eat(SEMICOLON)
             return ReturnStmt(
                 expression=expression,
-                line=self.lexer.line
+                line=self.lexer.line,
+                char=self.lexer.char
             )
         elif self.current_token.type == BREAK:
             self.eat(BREAK)
             self.eat(SEMICOLON)
             return BreakStmt(
-                line=self.lexer.line
+                line=self.lexer.line,
+                char=self.lexer.char
             )
 
         elif self.current_token.type == CONTINUE:
             self.eat(CONTINUE)
             self.eat(SEMICOLON)
             return ContinueStmt(
-                line=self.lexer.line
+                line=self.lexer.line,
+                char=self.lexer.char
             )
 
     @restorable
@@ -379,7 +395,8 @@ class Parser(object):
                 condition=condition,
                 tbody=tstatement,
                 fbody=fstatement,
-                line=self.lexer.line
+                line=self.lexer.line,
+                char=self.lexer.char
             )
 
     @restorable
@@ -401,7 +418,8 @@ class Parser(object):
             return WhileStmt(
                 condition=expression,
                 body=statement,
-                line=self.lexer.line
+                line=self.lexer.line,
+                char=self.lexer.char
             )
         elif self.current_token.type == DO:
             self.eat(DO)
@@ -431,7 +449,8 @@ class Parser(object):
                 condition=condition,
                 increment=increment,
                 body=statement,
-                line=self.lexer.line
+                line=self.lexer.line,
+                char=self.lexer.char
             )
 
     def expression_statement(self):
@@ -461,7 +480,8 @@ class Parser(object):
             result.append(self.assignment_expression())
         return Expression(
             children=result,
-            line=self.lexer.line
+            line=self.lexer.line,
+            char=self.lexer.char
         )
 
     @restorable
@@ -492,7 +512,8 @@ class Parser(object):
                     left=node,
                     op=token,
                     right=self.assignment_expression(),
-                    line=self.lexer.line
+                    line=self.lexer.line,
+                    char=self.lexer.char
                 )
         return self.conditional_expression()
 
@@ -510,7 +531,8 @@ class Parser(object):
                 condition=node,
                 texpression=texpression,
                 fexpression=fexpression,
-                line=self.lexer.line
+                line=self.lexer.line,
+                char=self.lexer.char
             )
         return node
 
@@ -526,7 +548,8 @@ class Parser(object):
                 left=node,
                 op=token,
                 right=self.logical_or_expression(),
-                line=self.lexer.line
+                line=self.lexer.line,
+                char=self.lexer.char
             )
         return node
 
@@ -542,7 +565,8 @@ class Parser(object):
                 left=node,
                 op=token,
                 right=self.inclusive_or_expression(),
-                line=self.lexer.line
+                line=self.lexer.line,
+                char=self.lexer.char
             )
         return node
 
@@ -558,7 +582,8 @@ class Parser(object):
                 left=node,
                 op=token,
                 right=self.exclusive_or_expression(),
-                line=self.lexer.line
+                line=self.lexer.line,
+                char=self.lexer.char
             )
         return node
 
@@ -574,7 +599,8 @@ class Parser(object):
                 left=node,
                 op=token,
                 right=self.and_expression(),
-                line=self.lexer.line
+                line=self.lexer.line,
+                char=self.lexer.char
             )
         return node
 
@@ -590,7 +616,8 @@ class Parser(object):
                 left=node,
                 op=token,
                 right=self.equality_expression(),
-                line=self.lexer.line
+                line=self.lexer.line,
+                char=self.lexer.char
             )
         return node
 
@@ -606,7 +633,8 @@ class Parser(object):
                 left=node,
                 op=token,
                 right=self.relational_expression(),
-                line=self.lexer.line
+                line=self.lexer.line,
+                char=self.lexer.char
             )
         return node
 
@@ -622,7 +650,8 @@ class Parser(object):
                 left=node,
                 op=token,
                 right=self.shift_expression(),
-                line=self.lexer.line
+                line=self.lexer.line,
+                char=self.lexer.char
             )
         return node
 
@@ -638,7 +667,8 @@ class Parser(object):
                 left=node,
                 op=token,
                 right=self.additive_expression(),
-                line=self.lexer.line
+                line=self.lexer.line,
+                char=self.lexer.char
             )
         return node
 
@@ -655,7 +685,8 @@ class Parser(object):
                 left=node,
                 op=token,
                 right=self.multiplicative_expression(),
-                line=self.lexer.line
+                line=self.lexer.line,
+                char=self.lexer.char
             )
 
         return node
@@ -672,7 +703,8 @@ class Parser(object):
                 left=node,
                 op=token,
                 right=self.cast_expression(),
-                line=self.lexer.line
+                line=self.lexer.line,
+                char=self.lexer.char
             )
         return node
 
@@ -697,7 +729,8 @@ class Parser(object):
             return UnOp(
                 op=type_node.token,
                 expr=self.cast_expression(),
-                line=self.lexer.line
+                line=self.lexer.line,
+                char=self.lexer.char
             )
         else:
             return self.unary_expression()
@@ -718,7 +751,8 @@ class Parser(object):
             return UnOp(
                 op=token,
                 expr=self.unary_expression(),
-                line=self.lexer.line
+                line=self.lexer.line,
+                char=self.lexer.char
             )
         elif self.current_token.type in (AND_OP, ADD_OP, SUB_OP, LOG_NEG):
             token = self.current_token
@@ -726,7 +760,8 @@ class Parser(object):
             return UnOp(
                 op=token,
                 expr=self.cast_expression(),
-                line=self.lexer.line
+                line=self.lexer.line,
+                char=self.lexer.char
             )
         else:
             return self.postfix_expression()
@@ -745,6 +780,7 @@ class Parser(object):
                 op=token,
                 expr=node,
                 line=self.lexer.line,
+                char=self.lexer.char,
                 prefix=False
             )
         elif self.current_token.type == LPAREN:
@@ -758,7 +794,8 @@ class Parser(object):
             node = FunctionCall(
                 name=node.value,
                 args=args,
-                line=self.lexer.line
+                line=self.lexer.line,
+                char=self.lexer.char
             )
         return node
 
@@ -803,19 +840,22 @@ class Parser(object):
             self.eat(CHAR_CONST)
             return Num(
                 token=token,
-                line=self.lexer.line
+                line=self.lexer.line,
+                char=self.lexer.char
             )
         elif token.type == INTEGER_CONST:
             self.eat(INTEGER_CONST)
             return Num(
                 token=token,
-                line=self.lexer.line
+                line=self.lexer.line,
+                char=self.lexer.char
             )
         elif token.type == REAL_CONST:
             self.eat(REAL_CONST)
             return Num(
                 token=token,
-                line=self.lexer.line
+                line=self.lexer.line,
+                char=self.lexer.char
             )
 
 
@@ -828,7 +868,8 @@ class Parser(object):
         else:
             _variable = Var(
                 token=_token,
-                line=self.lexer.line
+                line=self.lexer.line,
+                char=self.lexer.char
             )
             return _variable
 
@@ -846,11 +887,13 @@ class Parser(object):
                 struct_name=token.value,
                 struct_variable=var,
                 line=self.lexer.line,
+                char=self.lexer.char
             )
         else:
             node = Var(
                 token=token,
-                line=self.lexer.line
+                line=self.lexer.line,
+                char=self.lexer.char
             )
 
         name = node.__dict__.get("struct_name", None)
@@ -862,7 +905,8 @@ class Parser(object):
     def empty(self):
         """An empty production"""
         return NoOp(
-            line=self.lexer.line
+            line=self.lexer.line,
+            char=self.lexer.line,
         )
 
     def string(self):
@@ -873,7 +917,8 @@ class Parser(object):
         self.eat(STRING)
         return String(
             token=token,
-            line=self.lexer.line
+            line=self.lexer.line,
+            char=self.lexer.char
         )
 
     def parse(self):
