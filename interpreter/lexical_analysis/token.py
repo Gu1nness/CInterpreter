@@ -1,3 +1,4 @@
+# -*- coding:utf8 -*-
 class Token(object):
     """ This class represents Token
     Output from Lexical analysis is list of tokens"""

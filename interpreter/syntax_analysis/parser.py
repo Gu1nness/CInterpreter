@@ -1,3 +1,4 @@
+# -*- coding:utf8 -*-
 """ SCI - Simple C Interpreter """
 
 from ..lexical_analysis.token_type import *

@@ -1,3 +1,4 @@
+# -*- coding:utf8 -*-
 class Number(object):
     types = dict(char=int, int=int, float=float, double=float)
     order = ('char', 'int', 'float', 'double')

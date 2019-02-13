@@ -1,3 +1,4 @@
+# -*- coding:utf8 -*-
 from .memory import *
 from .number import Number
 from ..lexical_analysis.lexer import Lexer

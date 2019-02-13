@@ -1,3 +1,4 @@
+# -*- coding:utf8 -*-
 from ..syntax_analysis.tree import NodeVisitor, Type
 from ..syntax_analysis.parser import INTEGER_CONST, CHAR_CONST, AND_OP, OR_OP, XOR_OP
 from .table import *
@@ -287,7 +288,7 @@ class SemanticAnalyzer(NodeVisitor):
                 "Function '{}' not found at line {}".format(
                     func_name,
                     node.line
-            ))
+                ))
 
         if not isinstance(func_symbol, FunctionSymbol):
             self.error(
@@ -336,7 +337,7 @@ class SemanticAnalyzer(NodeVisitor):
         expr = None
         for child in node.children:
             expr = self.visit(child)
-        return expr
+            return expr
 
     @staticmethod
     def analyze(tree):

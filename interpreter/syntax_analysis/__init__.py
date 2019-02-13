@@ -1,3 +1,4 @@
+# -*- coding:utf8 -*-
 """ This is alternatively known as parsing. It is roughly the equivalent of checking that some ordinary text written in
 a natural language (e.g. English) is grammatically correct (without worrying about meaning).
     The purpose of syntax analysis or parsing is to check that we have a valid sequence of tokens. Tokens are valid sequence

@@ -1,3 +1,4 @@
+# -*- coding:utf8 -*-
 """ SCI - Simple C Interpreter """
 from .token_type import *
 from .token import Token

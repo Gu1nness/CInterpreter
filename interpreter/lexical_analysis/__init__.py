@@ -1,3 +1,4 @@
+# -*- coding:utf8 -*-
 """ Lexical analysis is the process of analyzing a stream of individual characters (normally arranged as lines),
 into a sequence of lexical tokens (tokenization. for instance of "words" and punctuation symbols that make up source code)
 to feed into the parser. Roughly the equivalent of splitting ordinary text written in a natural language (e.g. English)

@@ -1,3 +1,4 @@
+# -*- coding:utf8 -*-
 """
 This module file supports basic functions from math.h library
 """

@@ -1,3 +1,4 @@
+# -*- coding:utf8 -*-
 """
 This module file supports basic functions from stdio.h library
 """
@@ -11,10 +12,11 @@ def printf(*args):
     example:
         printf("%d %d", 1, 2);
     """
-    fmt, *params = args
-    message = fmt % tuple([param.value for param in params])
+    fmt = args[0]
+    params = tuple(param.value for param in args[1:])
+    message = fmt % params
     result = len(message)
-    print(message, end='')
+    print(message, end="")
     return result
 
 @definition(return_type='int', arg_types=None)
@@ -30,7 +32,8 @@ def scanf(*args):
             return 'int'
         raise Exception('You are not allowed to use \'{}\' other type'.format(flag))
 
-    fmt, *params, memory = args
+    fmt = args[0]
+    params = (param.value for param in args[1:])
     fmt = re.sub(r'\s+', '', fmt)
     all_flags = re.findall('%[^%]*[dfi]', fmt)
     if len(all_flags) != len(params):
@@ -40,8 +43,8 @@ def scanf(*args):
         ))
     elements = []
     while len(elements) < len(all_flags):
-        str = input()
-        elements.extend(str.split())
+        string = input()
+        elements.extend(string.split())
     for flag, param, val in zip(all_flags, params, elements):
         memory[param] = Number(cast(flag), val)
 

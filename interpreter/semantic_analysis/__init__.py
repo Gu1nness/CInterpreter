@@ -1,3 +1,4 @@
+# -*- coding:utf8 -*-
 """ This is roughly the equivalent of checking that some ordinary text written in a natural language (e.g. English)
 actually means something (whether or not that is what it was intended to mean).
     Semantic analysis is the activity of a compiler to determine what the types of various values are, how those types
