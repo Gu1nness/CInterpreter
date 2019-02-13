@@ -7,6 +7,7 @@ RESERVED_KEYWORDS = {
     'int': Token(INT, 'int'),
     'float': Token(FLOAT, 'float'),
     'double': Token(DOUBLE, 'double'),
+    'struct': Token(STRUCT, 'struct'),
     'if': Token(IF, 'if'),
     'else': Token(ELSE, 'else'),
     'for': Token(FOR, 'for'),
