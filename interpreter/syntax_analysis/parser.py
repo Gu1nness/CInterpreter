@@ -44,13 +44,16 @@ class Parser(object):
 
     def declarations(self):
         """
-        declarations                : (include_library | function_declaration | declaration_list)*
+        declarations                : (include_library | struct_type | function_declaration | declaration_list)*
         """
         declarations = []
 
-        while self.current_token.type in [CHAR, FLOAT, DOUBLE, INT, HASH, VOID]:
+        while self.current_token.type in [CHAR, FLOAT, DOUBLE, INT, HASH, VOID,
+                                          STRUCT]:
             if self.current_token.type == HASH:
                 declarations.append(self.include_library())
+            elif self.current_token.type == STRUCT:
+                declarations.append(self.struct_type())
             elif self.check_function():
                 declarations.append(self.function_declaration())
             else:
@@ -86,6 +89,35 @@ class Parser(object):
             library_name=token.value,
             line=self.lexer.line
         )
+
+    def struct_type(self):
+        """
+        struct_type          : STRUCT ID LBRACKET struct_body RBRACKET SEMICOLON
+        """
+        self.eat(STRUCT)
+        struct_name = self.current_token.value
+        token = self.current_token
+        self.eat(ID)
+        self.eat(LBRACKET)
+        body = self.struct_body()
+        self.eat(SEMICOLON)
+        return StructType(
+            token=token,
+            struct_name=struct_name,
+            struct_body=body,
+            line=self.lexer.line
+        )
+
+    def struct_body(self):
+        """
+        declaration_list            : declaration_list+
+        """
+        result = []
+        while self.current_token.type != RBRACKET:
+            if self.current_token.type in (CHAR, INT, FLOAT, DOUBLE):
+                result.extend(self.declaration_list())
+        self.eat(RBRACKET)
+        return result
 
     @restorable
     def check_function(self):
@@ -153,13 +185,23 @@ class Parser(object):
         declaration_list            : declaration+
         """
         result = self.declaration()
-        while self.current_token.type == (CHAR, INT, FLOAT, DOUBLE):
+        while self.current_token.type in (CHAR, INT, FLOAT, DOUBLE, STRUCT):
             result.extend(self.declaration())
         return result
 
     def declaration(self):
         """
-        declaration                 : type_spec init_declarator_list SEMICOLON
+        declaration                 : type_declaration | struct_decl
+        """
+        token = self.current_token.value
+        if token == 'struct':
+            return self.struct_decl()
+        else:
+            return self.type_decl()
+
+    def type_decl(self):
+        """
+        type_decl                   : type_spec init_declarator_list SEMICOLON
         """
         result = list()
         type_node = self.type_spec()
@@ -174,6 +216,43 @@ class Parser(object):
                 result.append(node)
         self.eat(SEMICOLON)
         return result
+
+    def type_spec(self):
+        """
+        type_spec                   : TYPE
+        """
+        token = self.current_token
+        if token.type in (CHAR, INT, FLOAT, DOUBLE, VOID):
+            self.eat(token.type)
+            return Type(
+                token=token,
+                line=self.lexer.line
+            )
+
+    def struct_decl(self):
+        """
+        struct_decl                 : STRUCT ID init_declarator_list SEMICOLON
+        """
+        result = list()
+        self.eat(STRUCT)
+        token = self.current_token
+        struct_name = token.value
+        self.eat(ID)
+        for node in self.init_declarator_list():
+            if isinstance(node, Var):
+                result.append(
+                    StructDecl(
+                        token=token,
+                        struct_name=node.value,
+                        struct_type=token.value,
+                        line=self.lexer.line
+                    )
+                )
+            else:
+                result.append(node)
+        self.eat(SEMICOLON)
+        return result
+
 
     def init_declarator_list(self):
         """
@@ -385,10 +464,17 @@ class Parser(object):
         )
 
     @restorable
+    def is_struct(self):
+        if self.current_token.type == DOT:
+            self.eat(DOT)
+            return self.check_assignment_expression()
+        return False
+
+    @restorable
     def check_assignment_expression(self):
         if self.current_token.type == ID:
             self.eat(ID)
-            return self.current_token.type.endswith('ASSIGN')
+            return (self.is_struct() or self.current_token.type.endswith('ASSIGN'))
         return False
 
     def assignment_expression(self):
@@ -731,28 +817,46 @@ class Parser(object):
                 line=self.lexer.line
             )
 
-    def type_spec(self):
+
+    def __parse_sub_struct(self):
+        _token = self.current_token
+        self.eat(ID)
+        __token = self.current_token
+        if __token.type == DOT:
+            _variable = __parse_sub_struct()
+        else:
+            _variable = Var(
+                token=_token,
+                line=self.lexer.line
+            )
+            return _variable
+
+    def variable(self):
         """
-        type_spec                   : TYPE
+        variable                    : ID (DOT ID)*
         """
         token = self.current_token
-        if token.type in (CHAR, INT, FLOAT, DOUBLE, VOID):
-            self.eat(token.type)
-            return Type(
+        self.eat(ID)
+        if self.current_token.type == DOT:
+            self.eat(DOT)
+            var = self.__parse_sub_struct()
+            node = StructVar(
+                token=token,
+                struct_name=token.value,
+                struct_variable=var,
+                line=self.lexer.line,
+            )
+        else:
+            node = Var(
                 token=token,
                 line=self.lexer.line
             )
 
-    def variable(self):
-        """
-        variable                    : ID
-        """
-        node = Var(
-            token=self.current_token,
-            line=self.lexer.line
-        )
-        self.eat(ID)
+        name = node.__dict__.get("struct_name", None)
+        if not name:
+            name = node.token
         return node
+
 
     def empty(self):
         """An empty production"""
@@ -775,9 +879,13 @@ class Parser(object):
         """
         program                     : declarations
 
-        declarations                : (include_library | function_declaration | declaration_list)*
+        declarations                : (include_library | struct_type | function_declaration | declaration_list)*
 
         include_library             : HASH ID<'include'> LESS_THAN ID DOT ID<'h'> GREATER_THAN
+
+        struct_type                 : STRUCT ID LBRACKET struct_body RBRACKET SEMICOLON
+
+        struct_body                 : declaration_list+
 
         function_declaration        : type_spec ID LPAREN parameters RPAREN compound_statement
 
@@ -787,7 +895,11 @@ class Parser(object):
 
         declaration_list            : declaration+
 
-        declaration                 : type_spec init_declarator_list SEMICOLON
+        declaration                 : type_decl | struct_decl
+
+        type_decl                   : type_spec init_declarator_list SEMICOLON
+
+        struct_decl                 : STRUCT ID init_declarator_list SEMICOLON
 
         init_declarator_list        : init_declarator (COMMA init_declarator)*
 
@@ -869,7 +981,8 @@ class Parser(object):
 
         type_spec                   : TYPE
 
-        variable                    : ID
+        variable                    :  ID (DOT ID)*
+
 
         string                      : STRING
 

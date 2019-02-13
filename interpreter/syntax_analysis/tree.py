@@ -1,3 +1,5 @@
+import sys
+
 class Node(object):
     def __init__(self, line):
         self.line = line
@@ -6,6 +8,17 @@ class Node(object):
 class NoOp(Node):
     pass
 
+class StructType(Node):
+    def __init__(self, token, struct_name, struct_body, line):
+        Node.__init__(self, line)
+        self.token = token
+        self.struct_name = struct_name# A struct name
+        self.struct_body = struct_body
+
+class FunctionBody(Node):
+    def __init__(self, children, line):
+        Node.__init__(self, line)
+        self.children = children
 
 class Num(Node):
     def __init__(self, token, line):
@@ -33,6 +46,13 @@ class Var(Node):
         Node.__init__(self, line)
         self.token = token
         self.value = token.value
+
+class StructVar(Node):
+    def __init__(self, token, struct_name, struct_variable, line):
+        Node.__init__(self, line)
+        self.token = token
+        self.struct_name = struct_name
+        self.struct_variable = struct_variable
 
 
 class BinOp(Node):
@@ -127,6 +147,12 @@ class CompoundStmt(Node):
         Node.__init__(self, line)
         self.children = children
 
+class StructDecl(Node):
+    def __init__(self, token, struct_name, struct_type, line):
+        Node.__init__(self, line)
+        self.struct_name = struct_name# A struct name
+        self.struct_type = struct_type
+
 
 class VarDecl(Node):
     def __init__(self, var_node, type_node, line):
@@ -177,6 +203,7 @@ class Program(Node):
 
 class NodeVisitor(object):
     def visit(self, node):
+        #sys.stderr.write("%s\n" % self.__dict__)
         method_name = 'visit_' + type(node).__name__
         visitor = getattr(self, method_name, self.generic_visit)
         return visitor(node)
