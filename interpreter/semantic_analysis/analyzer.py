@@ -1,8 +1,11 @@
 # -*- coding:utf8 -*-
-from ..syntax_analysis.tree import NodeVisitor, Type
+from ..syntax_analysis.tree import NodeVisitor, Type, StructDecl, VarDecl, FunctionDecl
 from ..syntax_analysis.parser import INTEGER_CONST, CHAR_CONST, AND_OP, OR_OP, XOR_OP
 from .table import *
 from ..utils.utils import get_functions, get_name, MessageColor
+
+
+SIZES = {int:1, float:2}
 
 class SemanticError(Exception):
     pass
@@ -10,7 +13,67 @@ class SemanticError(Exception):
 class TypeError(UserWarning):
     pass
 
+
 class SemanticAnalyzer(NodeVisitor):
+    _dtypes = {}
+
+    class DataType():
+        def __new__(cls, node, scope, *args, **kwargs):
+            if node.struct_name in SemanticAnalyzer._dtypes:
+                if scope == SemanticAnalyzer._dtypes[node.struct_name].scope:
+                    raise SemanticError("redefinition of struct %s at line %s" %
+                                        node.struct_name, node.line)
+                else:
+                    return SemanticAnalyzer._dtypes[node.struct_name]
+            return object.__new__(cls, *args, **kwargs)
+
+        def __init__(self, node, scope):
+            self.name = node.struct_name
+            self.scope = scope
+            self._attr = {}
+            for i in node.struct_body:
+                if isinstance(i, VarDecl):
+                    self._attr[i.var_node] = None
+                elif isinstance(i, StructDecl):
+                    self._attr[i.struct_name] = None
+                else:
+                    raise TypeError("Type %s unknown" % node)
+
+        def __hash__(self):
+            return hash("".join([str(i) for i in self._attr]))
+
+
+        def _compute_size(self):
+            size = 0
+            for attribute in [item for item in self._attr if type(item) not in ["scope", "name"]]:
+                if isinstance(attribute, SemanticAnalyzer.CType):
+                    size += SIZES[SemanticAnalyzer.CType.types[attribute.type]]
+                elif isinstance(attribute, SemanticAnalyzer.DataType):
+                    size += SIZES[attribute]
+                else:
+                    #raise SemanticError("Unkown Type %s" % attribute)
+                    pass
+            SIZES[self] = size
+            return size
+
+        def _calc_type(self, other):
+            raise SemanticError("Unable to compute size (%s and %s" \
+                                % (self.name, other.type))
+
+        def __add__(self, other):
+            raise SemanticError("invalid operands to binary + (%s and %s" \
+                                % (self.name, other.type))
+
+
+        def __eq__(self, other):
+            if isintance(other, CType):
+                return  SIZES[self] == SIZES[other.type]
+
+        def __repr__(self):
+            return '{}'.format(self.name)
+
+        def __str__(self):
+            return self.__repr__()
 
     class CType(object):
         types = dict(char=int, int=int, float=float, double=float)
@@ -82,6 +145,46 @@ class SemanticAnalyzer(NodeVisitor):
             )
 
         self.current_scope.insert(var_symbol)
+
+    def visit_StructType(self, node):
+        """ struct StructName var_node"""
+
+        dtype = SemanticAnalyzer.DataType(node, self.current_scope)
+        for child in node.struct_body:
+            self.visit(child)
+            if isinstance(child, VarDecl):
+                label = child.var_node
+            elif isinstance(child, StructDecl):
+                label = child.struct_name
+            else:
+                #raise TypeError("Type %s unknown" % node)
+                pass
+            value = self.current_scope.lookup(label, current_scope_only=True)
+            dtype._attr[label] = value
+        SemanticAnalyzer.CType.types.update({dtype.name: dtype._compute_size()})
+        SemanticAnalyzer._dtypes[node.struct_name] = dtype
+        self.current_scope.insert(dtype)
+
+    def visit_StructDecl(self, node):
+        """ type_node var_node """
+
+        struct_type = node.struct_type
+        type_symbol = self.current_scope.lookup(struct_type)
+
+        var_name = node.struct_name
+        var_symbol = StructSymbol(var_name, type_symbol, type_symbol._attr)
+
+        if self.current_scope.lookup(var_name, current_scope_only=True):
+            self.error(
+                "Error: Duplicate identifier '{}' found at line {}".format(
+                    var_name,
+                    node.line
+                )
+            )
+
+        self.current_scope.insert(var_symbol)
+
+
 
     def visit_IncludeLibrary(self, node):
         """ #include <library_name.h> """
@@ -214,7 +317,7 @@ class SemanticAnalyzer(NodeVisitor):
         """ right = left """
         right = self.visit(node.right)
         left = self.visit(node.left)
-        if left != right:
+        if not SemanticAnalyzer.CType.__eq__(left, right):
             self.warning("Incompatible types when assigning to type <{}> from type <{}> at line {}".format(
                 left,
                 right,
@@ -234,6 +337,23 @@ class SemanticAnalyzer(NodeVisitor):
                 )
             )
         return SemanticAnalyzer.CType(var_symbol.type.name)
+
+    def __recurse_sub_struct(self, node):
+        pass
+
+    def visit_StructVar(self, node):
+        """ A struct var value"""
+        var_name = node.struct_name
+        var_symbol = self.current_scope.lookup(var_name, struct=True)
+        if var_symbol is None:
+            self.error(
+                "Symbol(identifier) not found '{}' at line {}".format(
+                    var_name,
+                    node.line
+                )
+            )
+        return self.visit(node.struct_variable)
+
 
     def visit_Type(self, node):
         pass
@@ -337,7 +457,7 @@ class SemanticAnalyzer(NodeVisitor):
         expr = None
         for child in node.children:
             expr = self.visit(child)
-            return expr
+        return expr
 
     @staticmethod
     def analyze(tree):

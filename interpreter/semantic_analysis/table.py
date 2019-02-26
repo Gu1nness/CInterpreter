@@ -26,6 +26,20 @@ class VarSymbol(Symbol):
 
     __repr__ = __str__
 
+class StructSymbol(Symbol):
+    def __init__(self, name, type, attributes):
+        super(StructSymbol, self).__init__(name, type)
+        self.attributes = attributes
+
+    def __str__(self):
+        return "<{class_name}(name='{name}',({attr}) type='{type}')>".format(
+            class_name=self.__class__.__name__,
+            attr=",".join([str(attribute for attribute in self.attributes.keys())]),
+            name=self.name,
+            type=self.type,
+        )
+
+    __repr__ = __str__
 
 class BuiltinTypeSymbol(Symbol):
     def __init__(self, name):
@@ -99,8 +113,8 @@ class ScopedSymbolTable(object):
         # print('Insert: %s' % symbol.name)
         self._symbols[symbol.name] = symbol
 
-    def lookup(self, name, current_scope_only=False):
-        # print('Lookup: %s. (Scope name: %s)' % (name, self.scope_name))
+    def lookup(self, name, current_scope_only=False, struct=False):
+        #print('Lookup: %s. (Scope name: %s)' % (name, self.scope_name))
         # 'symbol' is either an instance of the Symbol class or None
         symbol = self._symbols.get(name)
 
