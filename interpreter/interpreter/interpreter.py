@@ -19,8 +19,10 @@ def _recurse_name(node, name=""):
 
 def bp_wrapper(func):
     def wrapper(self, node):
-        if (node.line, node.column) in self.break_points:
-            CQueue.put(((node.line, node.column), self.memory))
+        if (node.line, node.char) in self.break_points:
+            CQueue.put(((node.line, node.char), self.memory))
+        return func(self, node)
+    return wrapper
 
 class Interpreter(NodeVisitor):
 
