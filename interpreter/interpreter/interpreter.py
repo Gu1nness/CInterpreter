@@ -42,6 +42,7 @@ class Interpreter(NodeVisitor):
         for node in filter(lambda o: isinstance(o, FunctionDecl), tree.children):
             self.memory[node.func_name] = node
 
+    @bp_wrapper
     def visit_Program(self, node):
         for var in filter(lambda self: not isinstance(self, (FunctionDecl, StructType, IncludeLibrary)), node.children):
             self.visit(var)
@@ -242,7 +243,6 @@ class Interpreter(NodeVisitor):
             self.visit(node.body)
             self.visit(node.increment)
 
-    @bp_wrapper
     def interpret(self, tree):
         self.load_libraries(tree)
         self.load_functions(tree)
