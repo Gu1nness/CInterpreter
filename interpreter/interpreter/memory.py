@@ -92,6 +92,37 @@ class Stack(object):
         return '\n'.join(lines)
 
 
+class Structs(object):
+    def __init__(self):
+        self._structs = {}
+
+    def create(self, struct):
+        _name = struct.struct_name
+        body = {}
+        for variable in struct.struct_body:
+            if isinstance(variable, VarDecl):
+                body[_name + variable.var_node.value] = type_node
+            elif isinstance(variable, StructDecl):
+                struct = self.__getitem__(struct.struct_type)
+                body[_name + "." + variable.struct_name] = struct
+        self._structs[_name] = body
+
+
+    def declare(self, struct, name=""):
+        struct = self.__getitem__(struct.struct_type)
+        if struct:
+            for i in struct.keys():
+                if isinstance(i, VarDecl):
+                    memory.declare(name + "." + i.var_node.value)
+                elif isinstance(i, StructDecl):
+                    body[i.struct_name] = self.declare(i, memory,
+                                                       name=name+"."+name)
+                else:
+                    raise TypeError("Type %s unknown" % node)
+
+    def __getitem__(self, variable):
+        return self._structs.get(variable, None)
+
 class Memory(object):
     def __init__(self):
         self.global_frame = Frame('GLOBAL_MEMORY', None)

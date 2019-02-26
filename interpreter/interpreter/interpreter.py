@@ -1,4 +1,5 @@
 # -*- coding:utf8 -*-
+from queue import Queue
 from .memory import *
 from .number import Number
 from ..lexical_analysis.lexer import Lexer
@@ -8,10 +9,25 @@ from ..syntax_analysis.tree import *
 from ..semantic_analysis.analyzer import SemanticAnalyzer
 from ..utils.utils import get_functions, MessageColor
 
+CQueue = Queue()
+
+def _recurse_name(node, name=""):
+    if isinstance(node, Var):
+        return node.value
+    else:
+        return _recurse_name(node.struct_variable, name + "." + node.struct_name)
+
+def bp_wrapper(func):
+    def wrapper(self, node):
+        if (node.line, node.column) in self.break_points:
+            CQueue.put(((node.line, node.column), self.memory))
+
 class Interpreter(NodeVisitor):
 
-    def __init__(self):
+    def __init__(self, break_points):
         self.memory = Memory()
+        self.structs = Structs()
+        self.break_points = break_points
 
     def load_libraries(self, tree):
         for node in filter(lambda o: isinstance(o, IncludeLibrary), tree.children):
@@ -27,29 +43,42 @@ class Interpreter(NodeVisitor):
             self.memory[node.func_name] = node
 
     def visit_Program(self, node):
-        for var in filter(lambda self: not isinstance(self, (FunctionDecl, IncludeLibrary)), node.children):
+        for var in filter(lambda self: not isinstance(self, (FunctionDecl, StructType, IncludeLibrary)), node.children):
             self.visit(var)
 
+    @bp_wrapper
+    def visit_StructType(self, node):
+        self.structs.create(node)
+
+    @bp_wrapper
     def visit_VarDecl(self, node):
         self.memory.declare(node.var_node.value)
 
+    @bp_wrapper
+    def visit_StructDecl(self, node):
+        self.structs.declare(node, self.memory)
+
+    @bp_wrapper
     def visit_FunctionDecl(self, node):
         for i, param in enumerate(node.params):
             self.memory[param.var_node.value] = self.memory.stack.current_frame.current_scope._values.pop(i)
         return self.visit(node.body)
 
+    @bp_wrapper
     def visit_FunctionBody(self, node):
         for child in node.children:
             if isinstance(child, ReturnStmt):
                 return self.visit(child)
             self.visit(child)
 
+    @bp_wrapper
     def visit_Expression(self, node):
         expr = None
         for child in node.children:
             expr = self.visit(child)
         return expr
 
+    @bp_wrapper
     def visit_FunctionCall(self, node):
 
         args = [self.visit(arg) for arg in node.args]
@@ -69,6 +98,7 @@ class Interpreter(NodeVisitor):
         else:
             return Number(self.memory[node.name].return_type, self.memory[node.name](*args))
 
+    @bp_wrapper
     def visit_UnOp(self, node):
         if node.prefix:
             if node.op.type == AND_OP:
@@ -101,6 +131,7 @@ class Interpreter(NodeVisitor):
 
         return self.visit(node.expr)
 
+    @bp_wrapper
     def visit_CompoundStmt(self, node):
         self.memory.new_scope()
 
@@ -109,9 +140,11 @@ class Interpreter(NodeVisitor):
 
         self.memory.del_scope()
 
+    @bp_wrapper
     def visit_ReturnStmt(self, node):
         return self.visit(node.expression)
 
+    @bp_wrapper
     def visit_Num(self, node):
         if node.token.type == INTEGER_CONST:
             return Number(ttype="int", value=node.value)
@@ -120,11 +153,21 @@ class Interpreter(NodeVisitor):
         else:
             return Number(ttype="float", value=node.value)
 
+    @bp_wrapper
     def visit_Var(self, node):
         return self.memory[node.value]
 
+    @bp_wrapper
+    def visit_StructVar(self, node):
+        name = _recurse_name(node)
+        return self.memory[name]
+
+    @bp_wrapper
     def visit_Assign(self, node):
-        var_name = node.left.value
+        if isinstance(node.left, Var):
+            var_name = node.left.value
+        else:
+            var_name =  _recurse_name(node.left)
         if node.op.type == ADD_ASSIGN:
             self.memory[var_name] += self.visit(node.right)
         elif node.op.type == SUB_ASSIGN:
@@ -137,9 +180,11 @@ class Interpreter(NodeVisitor):
             self.memory[var_name] = self.visit(node.right)
         return self.memory[var_name]
 
+    @bp_wrapper
     def visit_NoOp(self, node):
         pass
 
+    @bp_wrapper
     def visit_BinOp(self, node):
         if node.op.type == ADD_OP:
             return self.visit(node.left) + self.visit(node.right)
@@ -174,25 +219,30 @@ class Interpreter(NodeVisitor):
         elif node.op.type == XOR_OP:
             return self.visit(node.left) ^ self.visit(node.right)
 
+    @bp_wrapper
     def visit_String(self, node):
         return node.value
 
+    @bp_wrapper
     def visit_IfStmt(self, node):
         if self.visit(node.condition):
             self.visit(node.tbody)
         else:
             self.visit(node.fbody)
 
+    @bp_wrapper
     def visit_WhileStmt(self, node):
         while self.visit(node.condition):
             self.visit(node.body)
 
+    @bp_wrapper
     def visit_ForStmt(self, node):
         self.visit(node.setup)
         while self.visit(node.condition):
             self.visit(node.body)
             self.visit(node.increment)
 
+    @bp_wrapper
     def interpret(self, tree):
         self.load_libraries(tree)
         self.load_functions(tree)
