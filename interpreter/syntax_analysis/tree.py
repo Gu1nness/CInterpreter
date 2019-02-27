@@ -205,7 +205,6 @@ class Program(Node):
 
 class NodeVisitor(object):
     def visit(self, node, dtype=None):
-        #sys.stderr.write("%s\n" % self.__dict__)
         method_name = 'visit_' + type(node).__name__
         visitor = getattr(self, method_name, self.generic_visit)
         return visitor(node)
