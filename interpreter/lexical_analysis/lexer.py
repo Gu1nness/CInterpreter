@@ -32,7 +32,7 @@ class Lexer(object):
         self.pos = 0
         self.current_char = self.text[self.pos]
         self.line = 1
-        self.char = 1
+        self.char = 0
 
     def error(self, message):
         raise LexicalError(message)
@@ -40,7 +40,7 @@ class Lexer(object):
     def advance(self):
         """ Advance the `pos` pointer and set the `current_char` variable. """
         self.pos += 1
-        self.char = (self.pos % self.line) + 1
+        self.char += 1
 
         if self.pos > len(self.text) - 1:
             self.current_char = None  # Indicates end of input
@@ -59,7 +59,7 @@ class Lexer(object):
         """ Skip all whitespaces between tokens from input """
         while self.current_char is not None and self.current_char.isspace():
             if self.current_char == '\n':
-                self.char = 0
+                self.char = -1
                 self.line += 1
             self.advance()
 
@@ -67,6 +67,7 @@ class Lexer(object):
         """ Skip single line comment """
         while self.current_char is not None:
             if self.current_char == '\n':
+                self.char = -1
                 self.line += 1
                 self.advance()
                 return
@@ -80,6 +81,7 @@ class Lexer(object):
                 self.advance()
                 return
             if self.current_char == '\n':
+                self.char = -1
                 self.line += 1
             self.advance()
         self.error("Unterminated comment at line {}".format(self.line))
