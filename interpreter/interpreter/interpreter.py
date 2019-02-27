@@ -53,7 +53,6 @@ class Interpreter(NodeVisitor):
     def visit_StructType(self, node):
         self.structs.create(node)
 
-    @bp_wrapper
     def visit_VarDecl(self, node):
         self.memory.declare(node.var_node.value)
 
@@ -74,7 +73,6 @@ class Interpreter(NodeVisitor):
                 return self.visit(child)
             self.visit(child)
 
-    @bp_wrapper
     def visit_Expression(self, node):
         expr = None
         for child in node.children:
@@ -165,7 +163,6 @@ class Interpreter(NodeVisitor):
         name = _recurse_name(node)
         return self.memory[name]
 
-    @bp_wrapper
     def visit_Assign(self, node):
         if isinstance(node.left, Var):
             var_name = node.left.value
@@ -181,46 +178,52 @@ class Interpreter(NodeVisitor):
             self.memory[var_name] /= self.visit(node.right)
         else:
             self.memory[var_name] = self.visit(node.right)
+        if (node.line, node.char) in self.break_points:
+            CQueue.put(((node.line, node.char), self.memory))
         return self.memory[var_name]
 
     @bp_wrapper
     def visit_NoOp(self, node):
         pass
 
-    @bp_wrapper
     def visit_BinOp(self, node):
         if node.op.type == ADD_OP:
-            return self.visit(node.left) + self.visit(node.right)
+            value = self.visit(node.left) + self.visit(node.right)
         elif node.op.type == SUB_OP:
-            return self.visit(node.left) - self.visit(node.right)
+            value = self.visit(node.left) - self.visit(node.right)
         elif node.op.type == MUL_OP:
-            return self.visit(node.left) * self.visit(node.right)
+            value = self.visit(node.left) * self.visit(node.right)
         elif node.op.type == DIV_OP:
-            return self.visit(node.left) / self.visit(node.right)
+            value = self.visit(node.left) / self.visit(node.right)
         elif node.op.type == MOD_OP:
-            return self.visit(node.left) % self.visit(node.right)
+            value = self.visit(node.left) % self.visit(node.right)
         elif node.op.type == LT_OP:
-            return self.visit(node.left) < self.visit(node.right)
+            value = self.visit(node.left) < self.visit(node.right)
         elif node.op.type == GT_OP:
-            return self.visit(node.left) > self.visit(node.right)
+            value = self.visit(node.left) > self.visit(node.right)
         elif node.op.type == LE_OP:
-            return self.visit(node.left) <= self.visit(node.right)
+            value = self.visit(node.left) <= self.visit(node.right)
         elif node.op.type == GE_OP:
-            return self.visit(node.left) >= self.visit(node.right)
+            value = self.visit(node.left) >= self.visit(node.right)
         elif node.op.type == EQ_OP:
-            return self.visit(node.left) == self.visit(node.right)
+            value = self.visit(node.left) == self.visit(node.right)
         elif node.op.type == NE_OP:
-            return self.visit(node.left) != self.visit(node.right)
+            value = self.visit(node.left) != self.visit(node.right)
         elif node.op.type == LOG_AND_OP:
-            return self.visit(node.left) and self.visit(node.right)
+            value = self.visit(node.left) and self.visit(node.right)
         elif node.op.type == LOG_OR_OP:
-            return self.visit(node.left) or self.visit(node.right)
+            value = self.visit(node.left) or self.visit(node.right)
         elif node.op.type == AND_OP:
-            return self.visit(node.left) & self.visit(node.right)
+            value = self.visit(node.left) & self.visit(node.right)
         elif node.op.type == OR_OP:
-            return self.visit(node.left) | self.visit(node.right)
+            value = self.visit(node.left) | self.visit(node.right)
         elif node.op.type == XOR_OP:
-            return self.visit(node.left) ^ self.visit(node.right)
+            value = self.visit(node.left) ^ self.visit(node.right)
+        if (node.line, node.char) in self.break_points:
+            CQueue.put(((node.line, node.char), self.memory))
+        return value
+
+
 
     @bp_wrapper
     def visit_String(self, node):
@@ -233,10 +236,14 @@ class Interpreter(NodeVisitor):
         else:
             self.visit(node.fbody)
 
-    @bp_wrapper
     def visit_WhileStmt(self, node):
-        while self.visit(node.condition):
+        if self.visit(node.condition):
+            if (node.line, node.char) in self.break_points:
+                CQueue.put(((node.line, node.char), self.memory))
             self.visit(node.body)
+            if (node.line, node.char) in self.break_points:
+                CQueue.put(((node.line, node.char), self.memory))
+            self.visit(node)
 
     @bp_wrapper
     def visit_ForStmt(self, node):
@@ -252,7 +259,7 @@ class Interpreter(NodeVisitor):
         self.memory.new_frame('main')
         node = self.memory['main']
         res = self.visit(node)
-        self.memory.del_frame()
+        #self.memory.del_frame()
         return res
 
     @staticmethod
