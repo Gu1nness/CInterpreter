@@ -8,6 +8,7 @@ from ..syntax_analysis.parser import Parser
 from ..syntax_analysis.tree import *
 from ..semantic_analysis.analyzer import SemanticAnalyzer
 from ..utils.utils import get_functions, MessageColor
+from copy import deepcopy
 
 CQueue = Queue()
 
@@ -20,7 +21,7 @@ def _recurse_name(node, name=""):
 def bp_wrapper(func):
     def wrapper(self, node):
         if (node.line, node.char) in self.break_points:
-            CQueue.put(((node.line, node.char), self.memory))
+            CQueue.put(((node.line, node.char), deepcopy(self.memory)))
         return func(self, node)
     return wrapper
 
@@ -193,7 +194,7 @@ class Interpreter(NodeVisitor):
             else:
                 self.memory[var_name] = self.visit(node.right)
         if (node.line, node.char) in self.break_points:
-            CQueue.put(((node.line, node.char), self.memory))
+            CQueue.put(((node.line, node.char), deepcopy(self.memory)))
         return self.memory[var_name]
 
     @bp_wrapper
@@ -234,7 +235,7 @@ class Interpreter(NodeVisitor):
         elif node.op.type == XOR_OP:
             value = self.visit(node.left) ^ self.visit(node.right)
         if (node.line, node.char) in self.break_points:
-            CQueue.put(((node.line, node.char), self.memory))
+            CQueue.put(((node.line, node.char), deepcopy(self.memory)))
         return value
 
 
@@ -253,10 +254,10 @@ class Interpreter(NodeVisitor):
     def visit_WhileStmt(self, node):
         if self.visit(node.condition):
             if (node.line, node.char) in self.break_points:
-                CQueue.put(((node.line, node.char), self.memory))
+                CQueue.put(((node.line, node.char), deepcopy(self.memory)))
             self.visit(node.body)
             if (node.line, node.char) in self.break_points:
-                CQueue.put(((node.line, node.char), self.memory))
+                CQueue.put(((node.line, node.char), deepcopy(self.memory)))
             self.visit(node)
 
     @bp_wrapper
