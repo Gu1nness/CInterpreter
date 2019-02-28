@@ -1,13 +1,13 @@
 import os
-path = '/home/skantar/Documents/Learning/CInterpreter/examples'
+import sys
+path = '/home/remi/Travaux_ENS/Stage_FZN/c_asm_memcheck/fibo'
 
-print("PROCESSING...")
-for dir_name in sorted(os.listdir(path)):
-    print(dir_name)
-    dir_path = os.path.join(path, dir_name)
-    input_filename = "{}.c".format(os.path.join(dir_path, dir_name))
-    dot_filename = "{}.dot".format(os.path.join(dir_path, dir_name))
-    png_filename = "{}.png".format(os.path.join(dir_path, dir_name))
+def process_file(file_name):
+    real_path = os.path.join(path, file_name)
+    print("PROCESSING %s ..." % real_path)
+    input_filename = "{}.c".format(real_path)
+    dot_filename = "{}.dot".format(real_path)
+    png_filename = "{}.png".format(real_path)
 
     os.system('python genastdot.py {} > {} && dot -Tpng -o {} {}'.format(
         input_filename,
@@ -16,4 +16,14 @@ for dir_name in sorted(os.listdir(path)):
         dot_filename,
     ))
     # break
-print("FINISHED")
+    print("FINISHED %s" % real_path)
+
+if len(sys.argv) >= 2:
+    print(sys.argv)
+    for i in sys.argv[1:]:
+        process_file(i)
+else:
+    filename = 'fibo'
+    process_file(filename)
+
+

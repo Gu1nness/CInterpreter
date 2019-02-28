@@ -6,9 +6,12 @@
 ###############################################################################
 import argparse
 import textwrap
+import sys
 
 from interpreter.lexical_analysis.lexer import Lexer
+from interpreter.interpreter.interpreter import Interpreter
 from interpreter.syntax_analysis.parser import Parser
+from interpreter.semantic_analysis.analyzer import SemanticAnalyzer
 from interpreter.syntax_analysis.tree import NodeVisitor
 
 
@@ -36,6 +39,51 @@ class ASTVisualizer(NodeVisitor):
             self.visit(child)
             s = '  node{} -> node{}\n'.format(node._num, child._num)
             self.dot_body.append(s)
+
+    def visit_StructType(self, node, *args, **kwargs):
+        s = '  node{} [label="StructType"]\n'.format(self.ncount)
+        self.dot_body.append(s)
+        node._num = self.ncount
+        self.ncount += 1
+
+        s = '  node{} [label="{}"]\n'.format(self.ncount, node.struct_name)
+        self.dot_body.append(s)
+        s = '  node{} -> node{}\n'.format(node._num, self.ncount)
+        self.dot_body.append(s)
+        self.ncount += 1
+
+        for child in node.struct_body:
+            self.visit(child)
+            s = '  node{} -> node{}\n'.format(node._num, child._num)
+            self.dot_body.append(s)
+
+    def visit_StructDecl(self, node, *args, **kwargs):
+        s = '  node{} [label="StructDecl"]\n'.format(self.ncount)
+        self.dot_body.append(s)
+        node._num = self.ncount
+        self.ncount += 1
+
+        s = '  node{} [label="{}"]\n'.format(self.ncount, node.struct_name)
+        self.dot_body.append(s)
+        s = '  node{} -> node{}\n'.format(node._num, self.ncount)
+        self.dot_body.append(s)
+        self.ncount += 1
+
+        s = '  node{} [label="{}"]\n'.format(self.ncount, node.struct_type)
+        self.dot_body.append(s)
+        s = '  node{} -> node{}\n'.format(node._num, self.ncount)
+        self.dot_body.append(s)
+        self.ncount += 1
+
+    def visit_StructVar(self, node, *args, **kwargs):
+        s = '  node{} [label="{}"]\n'.format(self.ncount, node.struct_name)
+        self.dot_body.append(s)
+        node._num = self.ncount
+        self.ncount += 1
+        self.visit(node.struct_variable)
+        s = '  node{} -> node{}\n'.format(node._num, node.struct_variable._num)
+        self.dot_body.append(s)
+
 
     def visit_VarDecl(self, node, *args, **kwargs):
         s = '  node{} [label="VarDecl"]\n'.format(self.ncount)
@@ -109,6 +157,7 @@ class ASTVisualizer(NodeVisitor):
         self.ncount += 1
 
         for child_node in (node.left, node.right):
+            sys.stderr.write("%s\n" % child_node)
             self.visit(child_node)
             s = '  node{} -> node{}\n'.format(node._num, child_node._num)
             self.dot_body.append(s)
@@ -302,9 +351,14 @@ def main():
 
     lexer = Lexer(text)
     parser = Parser(lexer)
+    tree = parser.parse()
+    semantic = SemanticAnalyzer.analyze(tree)
     viz = ASTVisualizer(parser)
-    content = viz.gendot()
-    print(content)
+    #content = viz.gendot()
+    interp = Interpreter([])
+    status = interp.interpret(tree)
+    print(interp.memory.stack.current_frame.frame_name)
+    print(status)
 
 
 if __name__ == '__main__':
