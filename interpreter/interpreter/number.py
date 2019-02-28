@@ -1,130 +1,100 @@
 # -*- coding:utf8 -*-
+from ctypes import c_uint
+
 class Number(object):
-    types = dict(char=int, int=int, float=float, double=float)
-    order = ('char', 'int', 'float', 'double')
 
-    def __init__(self, ttype, value):
-        self.type = ttype
-        self.value = Number.types[ttype](value)
+    def __init__(self, value):
+        self.value = c_uint(value)
 
-    def _get_res_type(self, other):
-        left_order = Number.order.index(self.type)
-        right_order = Number.order.index(other.type)
-        ttype = Number.order[max(left_order, right_order)]
-        return ttype, Number.types[ttype]
+    @property
+    def val(self):
+        return self.value.value
 
     def __add__(self, other):
         """ self + other """
-        ttype, ctype = self._get_res_type(other)
-        return Number(ttype, ctype(self.value) + ctype(other.value))
+        return Number(self.val + other.val)
 
     def __sub__(self, other):
         """ self - other """
-        ttype, ctype = self._get_res_type(other)
-        return Number(ttype, ctype(self.value) - ctype(other.value))
+        return Number(self.val - other.val)
 
     def __mul__(self, other):
         """ self * other """
-        ttype, ctype = self._get_res_type(other)
-        return Number(ttype, ctype(self.value) * ctype(other.value))
+        return Number(self.val * other.val)
 
     def __truediv__(self, other):
         """ self / other """
-        ttype, ctype = self._get_res_type(other)
-        if ctype == int:
-            return Number(ttype, ctype(self.value) // ctype(other.value))
-        return Number(ttype, ctype(self.value) / ctype(other.value))
+        return Number(self.val // other.val)
 
     def __mod__(self, other):
         """ self % other """
-        ttype, ctype = self._get_res_type(other)
-
-        if ctype != int:
-            raise TypeError("invalid operands of types '{}' and '{}' to binary ‘operator %’".format(
-                self.type,
-                other.type
-            ))
-        return Number(ttype, ctype(self.value) % ctype(other.value))
+        return Number(self.val % other.val)
 
     def __gt__(self, other):
         """ self > other """
-        ttype, ctype = self._get_res_type(other)
-        return Number('int', int(ctype(self.value) > ctype(other.value)))
+        return Number(int(self.val > other.val))
 
     def __ge__(self, other):
         """ self >= other """
-        ttype, ctype = self._get_res_type(other)
-        return Number('int', int(ctype(self.value) >= ctype(other.value)))
+        return Number(int(self.val >= other.val))
 
     def __lt__(self, other):
         """ self < other """
-        ttype, ctype = self._get_res_type(other)
-        return Number('int', int(ctype(self.value) < ctype(other.value)))
+        return Number(int(self.val < other.val))
 
     def __le__(self, other):
         """ self <= other """
-        ttype, ctype = self._get_res_type(other)
-        return Number('int', int(ctype(self.value) <= ctype(other.value)))
+        return Number(int(self.val <= other.val))
 
     def __eq__(self, other):
         """ self == other """
-        ttype, ctype = self._get_res_type(other)
-        return Number('int', int(ctype(self.value) == ctype(other.value)))
+        return Number(int(self.val == other.val))
 
     def __ne__(self, other):
         """ self != other """
-        ttype, ctype = self._get_res_type(other)
-        return Number('int', int(ctype(self.value) != ctype(other.value)))
+        return Number(int(self.val != other.val))
 
     def __iadd__(self, other):
         """ self += other """
-        ctype = Number.types[self.type]
-        result = self + other
-        return Number(self.type, ctype(result.value))
+        result = self.val + other.val
+        return Number(result)
 
     def __isub__(self, other):
         """ self -= other """
-        ctype = Number.types[self.type]
-        result = self - other
-        return Number(self.type, ctype(result.value))
+        result = self.val - other.val
+        return Number(result)
 
     def __imul__(self, other):
         """ self *= other """
-        ctype = Number.types[self.type]
-        result = self * other
-        return Number(self.type, ctype(result.value))
+        result = self.val * other.val
+        return Number(result)
 
     def __itruediv__(self, other):
         """ self /= other """
-        ctype = Number.types[self.type]
-        result = self / other
-        return Number(self.type, ctype(result.value))
+        result = self.val / other.val
+        return Number(result)
 
     def __and__(self, other):
         """ self & other """
-        ttype, ctype = self._get_res_type(other)
-        return Number(ttype, int(ctype(self.value) & ctype(other.value)))
+        return Number(int(self.val & other.val))
 
     def __or__(self, other):
         """ self | other """
-        ttype, ctype = self._get_res_type(other)
-        return Number(ttype, int(ctype(self.value) | ctype(other.value)))
+        return Number(int(self.val | other.val))
 
     def __xor__(self, other):
         """ self ^ other """
-        ttype, ctype = self._get_res_type(other)
-        return Number(ttype, int(ctype(self.value) ^ ctype(other.value)))
+        return Number(int(self.val ^ other.val))
 
 
     def __bool__(self):
         return bool(self.value)
 
     def _not(self):
-        return Number('int', 0) if self.value else Number('int', 1)
+        return Number(0) if self.value else Number(1)
 
     def __repr__(self):
-        return '{} ({})'.format(
-            self.type,
+        return 'int ({})'.format(
             self.value
         )
 
