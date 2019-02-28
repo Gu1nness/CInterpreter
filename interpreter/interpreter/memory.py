@@ -1,5 +1,6 @@
 # -*- coding:utf8 -*-
 import random
+from ..syntax_analysis.tree import StructDecl, VarDecl, Type
 
 class Scope(object):
     def __init__(self, scope_name, parent_scope=None):
@@ -15,6 +16,9 @@ class Scope(object):
 
     def __contains__(self, key):
         return key in self._values
+
+    def keys(self):
+        return self._values.keys()
 
     def __repr__(self):
         lines = [
@@ -101,24 +105,23 @@ class Structs(object):
         body = {}
         for variable in struct.struct_body:
             if isinstance(variable, VarDecl):
-                body[_name + variable.var_node.value] = type_node
+                body[_name + "." + variable.var_node.value] = variable
             elif isinstance(variable, StructDecl):
                 struct = self.__getitem__(struct.struct_type)
                 body[_name + "." + variable.struct_name] = struct
         self._structs[_name] = body
 
 
-    def declare(self, struct, name=""):
-        struct = self.__getitem__(struct.struct_type)
-        if struct:
-            for i in struct.keys():
-                if isinstance(i, VarDecl):
-                    memory.declare(name + "." + i.var_node.value)
-                elif isinstance(i, StructDecl):
-                    body[i.struct_name] = self.declare(i, memory,
-                                                       name=name+"."+name)
+    def declare(self, struct, memory, name=""):
+        struct_found = self.__getitem__(struct.struct_type)
+        if struct_found:
+            res = {}
+            for (name, type) in struct_found.items():
+                if isinstance(type, VarDecl):
+                    res[type.var_node.value] = random.randint(0, 2**32)
                 else:
-                    raise TypeError("Type %s unknown" % node)
+                    raise TypeError("Type %s unknown" % type(i))
+            memory.declare(struct.struct_name, value=res)
 
     def __getitem__(self, variable):
         return self._structs.get(variable, None)
@@ -133,18 +136,33 @@ class Memory(object):
         ins_scope[key] = value
 
     def __setitem__(self, key, value):
+        splitted = []
+        if '.' in key:
+            splitted = key.split(".")
+            key = splitted[0]
         ins_scope = self.stack.current_frame.current_scope if self.stack.current_frame else self.global_frame.current_scope
         curr_scope = ins_scope
         while curr_scope and key not in curr_scope:
             curr_scope = curr_scope.parent_scope
         ins_scope = curr_scope if curr_scope else ins_scope
-        ins_scope[key] = value
+        if splitted:
+            ins_scope[key][splitted[1]] = value
+        else:
+            ins_scope[key] = value
 
     def __getitem__(self, item):
         curr_scope = self.stack.current_frame.current_scope if self.stack.current_frame else self.global_frame.current_scope
         while curr_scope and item not in curr_scope:
             curr_scope = curr_scope.parent_scope
         return curr_scope[item]
+
+    def keys(self):
+        res = []
+        curr_scope = self.stack.current_frame.current_scope if self.stack.current_frame else self.global_frame.current_scope
+        while curr_scope:
+            res += curr_scope.keys()
+            curr_scope = curr_scope.parent_scope
+        return res
 
     def new_frame(self, frame_name):
         self.stack.new_frame(frame_name, self.global_frame.current_scope)

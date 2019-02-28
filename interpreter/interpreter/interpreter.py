@@ -44,14 +44,14 @@ class Interpreter(NodeVisitor):
         for node in filter(lambda o: isinstance(o, FunctionDecl), tree.children):
             self.memory[node.func_name] = node
 
+    def load_structs(self, tree):
+        for node in filter(lambda o: isinstance(o, StructType), tree.children):
+            self.structs.create(node)
+
     @bp_wrapper
     def visit_Program(self, node):
         for var in filter(lambda self: not isinstance(self, (FunctionDecl, StructType, IncludeLibrary)), node.children):
             self.visit(var)
-
-    @bp_wrapper
-    def visit_StructType(self, node):
-        self.structs.create(node)
 
     def visit_VarDecl(self, node):
         self.memory.declare(node.var_node.value)
@@ -161,23 +161,37 @@ class Interpreter(NodeVisitor):
     @bp_wrapper
     def visit_StructVar(self, node):
         name = _recurse_name(node)
-        return self.memory[name]
+        return self.memory[node.struct_name][name]
 
     def visit_Assign(self, node):
+        sub_name = ""
         if isinstance(node.left, Var):
             var_name = node.left.value
         else:
-            var_name =  _recurse_name(node.left)
-        if node.op.type == ADD_ASSIGN:
-            self.memory[var_name] += self.visit(node.right)
-        elif node.op.type == SUB_ASSIGN:
-            self.memory[var_name] -= self.visit(node.right)
-        elif node.op.type == MUL_ASSIGN:
-            self.memory[var_name] *= self.visit(node.right)
-        elif node.op.type == DIV_ASSIGN:
-            self.memory[var_name] /= self.visit(node.right)
+            var_name = node.left.struct_name
+            sub_name = _recurse_name(node.left)
+        if sub_name:
+            if node.op.type == ADD_ASSIGN:
+                self.memory[var_name][sub_name] += self.visit(node.right)
+            elif node.op.type == SUB_ASSIGN:
+                self.memory[var_name][sub_name] -= self.visit(node.right)
+            elif node.op.type == MUL_ASSIGN:
+                self.memory[var_name][sub_name] *= self.visit(node.right)
+            elif node.op.type == DIV_ASSIGN:
+                self.memory[var_name][sub_name] /= self.visit(node.right)
+            else:
+                self.memory[var_name][sub_name] = self.visit(node.right)
         else:
-            self.memory[var_name] = self.visit(node.right)
+            if node.op.type == ADD_ASSIGN:
+                self.memory[var_name] += self.visit(node.right)
+            elif node.op.type == SUB_ASSIGN:
+                self.memory[var_name] -= self.visit(node.right)
+            elif node.op.type == MUL_ASSIGN:
+                self.memory[var_name] *= self.visit(node.right)
+            elif node.op.type == DIV_ASSIGN:
+                self.memory[var_name] /= self.visit(node.right)
+            else:
+                self.memory[var_name] = self.visit(node.right)
         if (node.line, node.char) in self.break_points:
             CQueue.put(((node.line, node.char), self.memory))
         return self.memory[var_name]
@@ -255,6 +269,7 @@ class Interpreter(NodeVisitor):
     def interpret(self, tree):
         self.load_libraries(tree)
         self.load_functions(tree)
+        self.load_structs(tree)
         self.visit(tree)
         self.memory.new_frame('main')
         node = self.memory['main']
