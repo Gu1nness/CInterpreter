@@ -118,7 +118,7 @@ class Structs(object):
             res = {}
             for (name, type) in struct_found.items():
                 if isinstance(type, VarDecl):
-                    res[type.var_node.value] = random.randint(0, 2**32)
+                    res[type.var_node.value] = 0
                 else:
                     raise TypeError("Type %s unknown" % type(i))
             memory.declare(struct.struct_name, value=res)
@@ -131,7 +131,7 @@ class Memory(object):
         self.global_frame = Frame('GLOBAL_MEMORY', None)
         self.stack = Stack()
 
-    def declare(self, key, value=random.randint(0, 2**32)):
+    def declare(self, key, value=0):
         ins_scope = self.stack.current_frame.current_scope if self.stack.current_frame else self.global_frame.current_scope
         ins_scope[key] = value
 
