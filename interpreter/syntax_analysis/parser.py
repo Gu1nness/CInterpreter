@@ -709,10 +709,10 @@ class Parser(object):
         additive_expression         : multiplicative_expression ((ADD_OP | SUB_OP) multiplicative_expression)*
         """
         node = self.multiplicative_expression()
-        line=self.lexer.line
-        char=self.lexer.char
 
         while self.current_token.type in (ADD_OP, SUB_OP):
+            line=self.lexer.line
+            char=self.lexer.char
             token = self.current_token
             self.eat(token.type)
             node = BinOp(
@@ -730,9 +730,9 @@ class Parser(object):
         multiplicative_expression   : cast_expression ((MUL_OP | DIV_OP | MOD_OP) cast_expression)*
         """
         node = self.cast_expression()
-        line=self.lexer.line
-        char=self.lexer.char
         while self.current_token.type in (MUL_OP, DIV_OP, MOD_OP):
+            line=self.lexer.line
+            char=self.lexer.char
             token = self.current_token
             self.eat(token.type)
             node = BinOp(

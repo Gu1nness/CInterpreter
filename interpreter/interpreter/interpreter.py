@@ -9,6 +9,7 @@ from ..syntax_analysis.tree import *
 from ..semantic_analysis.analyzer import SemanticAnalyzer
 from ..utils.utils import get_functions, MessageColor
 from copy import deepcopy
+import sys
 
 CQueue = Queue()
 
@@ -142,9 +143,13 @@ class Interpreter(NodeVisitor):
 
         self.memory.del_scope()
 
-    @bp_wrapper
     def visit_ReturnStmt(self, node):
-        return self.visit(node.expression)
+        value = self.visit(node.expression)
+        if (node.line, node.char) in self.break_points:
+            CQueue.put(((node.line, node.char), deepcopy(self.memory)))
+        elif (node.line, node.char-1) in self.break_points:
+            CQueue.put(((node.line, node.char-1), deepcopy(self.memory)))
+        return value
 
     @bp_wrapper
     def visit_Num(self, node):
@@ -157,8 +162,11 @@ class Interpreter(NodeVisitor):
     def visit_Var(self, node):
         return self.memory[node.value]
 
-    @bp_wrapper
     def visit_StructVar(self, node):
+        if (node.line, node.char) in self.break_points:
+            CQueue.put(((node.line, node.char), deepcopy(self.memory)))
+        elif (node.line, node.char-1) in self.break_points:
+            CQueue.put(((node.line, node.char-1), deepcopy(self.memory)))
         name = _recurse_name(node)
         return self.memory[node.struct_name][name]
 
@@ -253,9 +261,13 @@ class Interpreter(NodeVisitor):
         if self.visit(node.condition):
             if (node.line, node.char) in self.break_points:
                 CQueue.put(((node.line, node.char), deepcopy(self.memory)))
+            elif (node.line, node.char+5) in self.break_points:
+                CQueue.put(((node.line, node.char+5), deepcopy(self.memory)))
             self.visit(node.body)
             if (node.line, node.char) in self.break_points:
                 CQueue.put(((node.line, node.char), deepcopy(self.memory)))
+            elif (node.line, node.char+5) in self.break_points:
+                CQueue.put(((node.line, node.char+5), deepcopy(self.memory)))
             self.visit(node)
 
     @bp_wrapper
