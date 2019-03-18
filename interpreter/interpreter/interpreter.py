@@ -23,15 +23,19 @@ def bp_wrapper(func):
     def wrapper(self, node):
         if (node.line, node.char) in self.break_points:
             CQueue.put(((node.line, node.char), deepcopy(self.memory)))
+            self.can_run.clear()
+        self.can_run.wait()
         return func(self, node)
     return wrapper
 
 class Interpreter(NodeVisitor):
 
-    def __init__(self, break_points):
+    def __init__(self, break_points, event):
         self.memory = Memory()
         self.structs = Structs()
         self.break_points = break_points
+        self.can_run = event
+        self.can_run.set()
 
     def load_libraries(self, tree):
         for node in filter(lambda o: isinstance(o, IncludeLibrary), tree.children):
@@ -145,10 +149,13 @@ class Interpreter(NodeVisitor):
 
     def visit_ReturnStmt(self, node):
         value = self.visit(node.expression)
+        self.can_run.wait()
         if (node.line, node.char) in self.break_points:
             CQueue.put(((node.line, node.char), deepcopy(self.memory)))
+            self.can_run.clear()
         elif (node.line, node.char-1) in self.break_points:
             CQueue.put(((node.line, node.char-1), deepcopy(self.memory)))
+            self.can_run.clear()
         return value
 
     @bp_wrapper
@@ -165,8 +172,11 @@ class Interpreter(NodeVisitor):
     def visit_StructVar(self, node):
         if (node.line, node.char) in self.break_points:
             CQueue.put(((node.line, node.char), deepcopy(self.memory)))
+            self.can_run.clear()
         elif (node.line, node.char-1) in self.break_points:
             CQueue.put(((node.line, node.char-1), deepcopy(self.memory)))
+            self.can_run.clear()
+        self.can_run.wait()
         name = _recurse_name(node)
         return self.memory[node.struct_name][name]
 
@@ -201,6 +211,8 @@ class Interpreter(NodeVisitor):
                 self.memory[var_name] = self.visit(node.right)
         if (node.line, node.char) in self.break_points:
             CQueue.put(((node.line, node.char), deepcopy(self.memory)))
+            self.can_run.clear()
+        self.can_run.wait()
         return self.memory[var_name]
 
     @bp_wrapper
@@ -242,6 +254,8 @@ class Interpreter(NodeVisitor):
             value = self.visit(node.left) ^ self.visit(node.right)
         if (node.line, node.char) in self.break_points:
             CQueue.put(((node.line, node.char), deepcopy(self.memory)))
+            self.can_run.clear()
+        self.can_run.wait()
         return value
 
 
@@ -258,16 +272,23 @@ class Interpreter(NodeVisitor):
             self.visit(node.fbody)
 
     def visit_WhileStmt(self, node):
+        self.can_run.wait()
         if self.visit(node.condition):
             if (node.line, node.char) in self.break_points:
                 CQueue.put(((node.line, node.char), deepcopy(self.memory)))
+                self.can_run.clear()
             elif (node.line, node.char+5) in self.break_points:
                 CQueue.put(((node.line, node.char+5), deepcopy(self.memory)))
+                self.can_run.clear()
+            self.can_run.wait()
             self.visit(node.body)
             if (node.line, node.char) in self.break_points:
                 CQueue.put(((node.line, node.char), deepcopy(self.memory)))
+                self.can_run.clear()
             elif (node.line, node.char+5) in self.break_points:
                 CQueue.put(((node.line, node.char+5), deepcopy(self.memory)))
+                self.can_run.clear()
+            self.can_run.wait()
             self.visit(node)
 
     @bp_wrapper

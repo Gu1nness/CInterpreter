@@ -1,4 +1,5 @@
 # -*- coding:utf8 -*-
+from ctypes import c_int
 import random
 from ..syntax_analysis.tree import StructDecl, VarDecl, Type
 
